@@ -32,7 +32,7 @@ func (d *KlineDownloader) DownloadKlines(symbol, filePath string, startTime, end
 		return nil // The file already exists, just returning
 	}
 
-	fmt.Printf("开始下载 %s 从 %s 到 %s 的K线数据...\n", symbol, startTime.Format("2006-01-02"), endTime.Format("2006-01-02"))
+	fmt.Printf("开始下载 %s 从 %s 到 %s K-line data...\n", symbol, startTime.Format("2006-01-02"), endTime.Format("2006-01-02"))
 
 	// --- Fix: Make sure the directory exists before creating the file ---
 	dir := filepath.Dir(filePath)
@@ -43,7 +43,7 @@ func (d *KlineDownloader) DownloadKlines(symbol, filePath string, startTime, end
 
 	file, err := os.Create(filePath)
 	if err != nil {
-		return fmt.Errorf("无法创建文件 %s: %v", filePath, err)
+		return fmt.Errorf("Can't create file %s: %v", filePath, err)
 	}
 	defer file.Close()
 
@@ -53,7 +53,7 @@ func (d *KlineDownloader) DownloadKlines(symbol, filePath string, startTime, end
 	// Write CSV header
 	header := []string{"open_time", "open", "high", "low", "close", "volume", "close_time", "quote_asset_volume", "number_of_trades", "taker_buy_base_asset_volume", "taker_buy_quote_asset_volume"}
 	if err := writer.Write(header); err != nil {
-		return fmt.Errorf("写入CSV表头失败: %v", err)
+		return fmt.Errorf("Failed to write CSV header: %v", err)
 	}
 
 	for t := startTime; t.Before(endTime); {
@@ -87,13 +87,13 @@ func (d *KlineDownloader) DownloadKlines(symbol, filePath string, startTime, end
 				k.TakerBuyQuoteAssetVolume,
 			}
 			if err := writer.Write(record); err != nil {
-				return fmt.Errorf("写入CSV记录失败: %v", err)
+				return fmt.Errorf("Failed to write CSV record: %v", err)
 			}
 		}
 
 		// Update the start time for the next request
 		t = time.UnixMilli(klines[len(klines)-1].CloseTime + 1)
-		fmt.Printf("已下载数据至 %s\n", t.Format("2006-01-02 15:04:05"))
+		fmt.Printf("Data downloaded to %s\n", t.Format("2006-01-02 15:04:05"))
 		time.Sleep(200 * time.Millisecond) // Avoid requesting too often
 	}
 
