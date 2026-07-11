@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// LiveExchange 实现了 Exchange 接口，用于与真实的币安交易所进行交互。
+// LiveExchange implements the Exchange interface, used to interact with the real Binance exchange.
 type LiveExchange struct {
 	apiKey     string
 	secretKey  string
@@ -32,7 +32,7 @@ type LiveExchange struct {
 	timeOffset int64
 }
 
-// NewLiveExchange 创建一个新的 LiveExchange 实例，并与服务器同步时间。
+// NewLiveExchange creates a new LiveExchange instance and synchronizes time with the server
 func NewLiveExchange(apiKey, secretKey, baseURL, wsBaseURL string, logger *zap.Logger) (*LiveExchange, error) {
 	e := &LiveExchange{
 		apiKey:     apiKey,
@@ -44,13 +44,13 @@ func NewLiveExchange(apiKey, secretKey, baseURL, wsBaseURL string, logger *zap.L
 	}
 
 	if err := e.syncTime(); err != nil {
-		return nil, fmt.Errorf("与币安服务器同步时间失败: %v", err)
+		return nil, fmt.Errorf("Failed to synchronize time with the Binance server.: %v", err)
 	}
 
 	return e, nil
 }
 
-// syncTime 与币安服务器同步时间，计算时间偏移。
+// syncTime synchronizes with the Binance server and calculates the time offset,
 func (e *LiveExchange) syncTime() error {
 	serverTime, err := e.GetServerTime()
 	if err != nil {
@@ -58,13 +58,13 @@ func (e *LiveExchange) syncTime() error {
 	}
 	localTime := time.Now().UnixMilli()
 	e.timeOffset = serverTime - localTime
-	e.logger.Info("与币安服务器时间同步完成", zap.Int64("timeOffset (ms)", e.timeOffset))
+	e.logger.Info("Time synchronization with the Binance server completed.", zap.Int64("timeOffset (ms)", e.timeOffset))
 	return nil
 }
 
-// doRequest 是一个通用的请求处理函数，用于向币安API发送请求。
+// doRequest is a generic request handler function used to send requests to the Binance API.
 func (e *LiveExchange) doRequest(method, endpoint string, params url.Values, signed bool) ([]byte, error) {
-	// 1. 准备基础 URL 和参数
+	// 1. Prepare the base URL and parameters
 	fullURL := fmt.Sprintf("%s%s", e.baseURL, endpoint)
 	queryParams := url.Values{}
 	if params != nil {
@@ -75,13 +75,13 @@ func (e *LiveExchange) doRequest(method, endpoint string, params url.Values, sig
 
 	var encodedParams string
 	if signed {
-		// 2. 对于签名请求，添加时间戳并生成签名
+		// 2. For signed requests, add a timestamp and generate the signature.
 		timestamp := time.Now().UnixMilli() + e.timeOffset
 		queryParams.Set("timestamp", fmt.Sprintf("%d", timestamp))
 
 		payloadToSign := queryParams.Encode()
 		signature := e.sign(payloadToSign)
-		// 将签名附加到已编码的参数字符串中
+		// Append the signature to the encoded parameter string.
 		encodedParams = fmt.Sprintf("%s&signature=%s", payloadToSign, signature)
 	} else {
 		// 对于非签名请求，直接编码
@@ -150,7 +150,7 @@ func (e *LiveExchange) sign(data string) string {
 	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-// --- Exchange 接口实现 ---
+// --- Exchange interface implementation ---
 
 // GetPrice 获取指定交易对的当前价格。
 func (e *LiveExchange) GetPrice(symbol string) (float64, error) {
@@ -228,7 +228,7 @@ func (e *LiveExchange) PlaceOrder(symbol, side, orderType string, quantity, pric
 	return &order, nil
 }
 
-// CancelOrder 取消订单。
+// CancelOrder cancels an order
 func (e *LiveExchange) CancelOrder(symbol string, orderID int64) error {
 	params := url.Values{}
 	params.Set("symbol", symbol)
@@ -287,30 +287,30 @@ func (e *LiveExchange) SetMarginType(symbol string, marginType string) error {
 	params.Set("marginType", marginType) // "ISOLATED" or "CROSSED"
 	_, err := e.doRequest("POST", "/fapi/v1/marginType", params, true)
 
-	// 如果错误是币安的特定错误，并且错误码是 -4046 (No need to change margin type), 则忽略该错误
+	// If the error is a Binance-specific error and the error code is -4046 (No need to change margin type), then ignore the error.
 	if err != nil {
 		if binanceErr, ok := err.(*models.Error); ok && binanceErr.Code == -4046 {
-			e.logger.Info("保证金模式无需更改，已是目标模式。")
-			return nil // 忽略此错误，因为已经是目标状态
+			e.logger.Info("No change to margin mode is required; it is already set to the target mode. ")
+			return nil // Ignore this error, as the system is already in the target state.
 		}
-		return err // 返回其他所有未处理的错误
+		return err // Return all other unhandled errors.
 	}
 
 	return nil // 没有错误，成功
 }
 
-// GetMarginType 获取指定交易对的保证金模式。
+// GetMarginType gets the margin type for a specified trading pair.
 func (e *LiveExchange) GetMarginType(symbol string) (string, error) {
 	params := url.Values{}
 	params.Set("symbol", symbol)
 	data, err := e.doRequest("GET", "/fapi/v2/positionRisk", params, true)
 	if err != nil {
-		return "", fmt.Errorf("获取持仓风险信息以确定保证金模式失败: %v", err)
+		return "", fmt.Errorf("Failed to retrieve position risk information to determine the margin mode: %v", err)
 	}
 
 	var positions []models.Position
 	if err := json.Unmarshal(data, &positions); err != nil {
-		return "", fmt.Errorf("解析持仓风险响应失败: %v", err)
+		return "", fmt.Errorf("Failed to parse position risk response: %v", err)
 	}
 
 	if len(positions) == 0 {
