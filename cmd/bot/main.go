@@ -67,9 +67,9 @@ func main() {
 		logger.S().Fatalf("Can't load the config file: %v", err)
 	}
 
-	// --- 使用文件中的配置重新初始化日志 ---
+	// --- Reinitialize logging using configuration from file ---
 	logger.InitLogger(cfg.LogConfig)
-	defer logger.S().Sync() // 确保在main函数退出时刷新所有缓冲的日志
+	defer logger.S().Sync() // Ensure all buffered logs are flushed when the main function exits
 
 	switch *mode {
 	case "live":
@@ -88,7 +88,7 @@ func main() {
 // handleBacktestMode 处理回测模式的启动逻辑，包括数据下载。
 // Returns the data file path if successful, or an error if it fails.
 func handleBacktestMode(symbol, startDate, endDate, dataPath string) (string, error) {
-	// 检查是否需要下载数据
+	// Check if you need to download data
 	shouldDownload := symbol != "" && startDate != "" && endDate != ""
 
 	if shouldDownload {
@@ -117,7 +117,7 @@ func handleBacktestMode(symbol, startDate, endDate, dataPath string) (string, er
 
 	// If no download is performed, a data path must be provided
 	if dataPath == "" {
-		return "", fmt.Errorf("Backtest mode needs to be enabled --data 或 --symbol/start/end 参数指定数据源")
+		return "", fmt.Errorf("Backtest mode needs to be enabled --data 或 --symbol/start/end Specify the data source by parameter")
 	}
 	return dataPath, nil
 }
@@ -156,7 +156,7 @@ func runLiveMode(cfg *models.Config) {
 	// --- Initialize exchange settings ---
 	logger.S().Info("Initializing exchange settings...")
 
-	// 1. 设置持仓模式 (单向/双向)
+	// 1. "Set position mode (one-way/two-way)
 	if _, err := liveExchange.GetAccountInfo(); err != nil {
 		logger.S().Fatalf(" call GetAccountInfo failure: %v", err)
 		return
@@ -170,17 +170,17 @@ func runLiveMode(cfg *models.Config) {
 	}
 
 	if currentHedgeMode != cfg.HedgeMode {
-		logger.S().Infof("Current Position Mode (HedgeMode=%v) 与配置 (HedgeMode=%v) 不符，Trying to update...", currentHedgeMode, cfg.HedgeMode)
+		logger.S().Infof("Current Position Mode (HedgeMode=%v) With configuration (HedgeMode=%v) Mismatch，Trying to update...", currentHedgeMode, cfg.HedgeMode)
 		if err := liveExchange.SetPositionMode(cfg.HedgeMode); err != nil {
 			logger.S().Fatalf("Failed to set position mode: %v", err)
 			return
 		}
 		logger.S().Infof("Position mode successfully updated to: HedgeMode=%v", cfg.HedgeMode)
 	} else {
-		logger.S().Infof("The current position mode is already set to the target mode (HedgeMode=%v)，无需更改。", cfg.HedgeMode)
+		logger.S().Infof("The current position mode is already set to the target mode (HedgeMode=%v)，No need to change.", cfg.HedgeMode)
 	}
 
-	// 2. 设置保证金模式 (全仓/逐仓)
+	// 2. Set Margin Mode (Cross/Isolated)
 	currentMarginType, err := liveExchange.GetMarginType(cfg.Symbol)
 	if err != nil {
 		logger.S().Fatalf("Failed to get the current margin mode: %v", err)
@@ -199,7 +199,7 @@ func runLiveMode(cfg *models.Config) {
 		logger.S().Infof("The current margin model is already the target model (%s)，No need to change.", cfg.MarginType)
 	}
 
-	// 初始化机器人
+	// Initialize the bot
 	gridBot := bot.NewGridTradingBot(cfg, liveExchange, false)
 
 	// 启动机器人
@@ -226,11 +226,11 @@ func runBacktestMode(cfg *models.Config, dataPath string) {
 	// 从数据路径中提取 symbol，并用它来覆盖 config 中的值
 	backtestSymbol := extractSymbolFromPath(dataPath)
 	if backtestSymbol == "" {
-		logger.S().Fatalf("Can't access from the data file path %s 中提取交易对", dataPath)
+		logger.S().Fatalf("Can't access from the data file path %s Extract trading pairs", dataPath)
 	}
 	cfg.Symbol = backtestSymbol // 确保机器人逻辑也使用正确的 symbol
 
-	// 使用新的构造函数，并传入完整的 config
+	// Use the new constructor and pass in the full config
 	backtestExchange := exchange.NewBacktestExchange(cfg)
 	gridBot := bot.NewGridTradingBot(cfg, backtestExchange, true)
 
@@ -241,7 +241,7 @@ func runBacktestMode(cfg *models.Config, dataPath string) {
 	}
 	defer file.Close()
 
-	// --- 重构数据读取以捕获时间 ---
+	// --- Refactor data reading to capture timestamps. ---
 	records, err := csv.NewReader(file).ReadAll()
 	if err != nil {
 		logger.S().Fatalf("Can't read all CSV records: %v", err)
@@ -259,7 +259,7 @@ func runBacktestMode(cfg *models.Config, dataPath string) {
 	startTime := time.UnixMilli(startTimeMs)
 	endTime := time.UnixMilli(endTimeMs)
 
-	// --- 使用第一行数据进行初始化 ---
+	// --- Initialize using the first row of data ---
 	initialRecord := records[0]
 	initialTimeMs, _ := strconv.ParseInt(initialRecord[0], 10, 64)
 	initialTime := time.UnixMilli(initialTimeMs)
@@ -292,7 +292,7 @@ func runBacktestMode(cfg *models.Config, dataPath string) {
 			break
 		}
 		if gridBot.IsHalted() {
-			logger.S().Info("The bot is paused，提前终止回测循环。")
+			logger.S().Info("The bot is paused，Stop the backtesting loop early.")
 			break
 		}
 
