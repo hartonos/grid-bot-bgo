@@ -7,8 +7,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// NewOrderRequest 定义了创建一个新订单所需的所有参数。
-// 这是一个标准化的结构，用于在机器人和交易所实现之间传递信息。
+// NewOrderRequest defines all the parameters required to create a new order.
+// This is a standardized structure used to pass information between the bot and the exchange implementation.
 type NewOrderRequest struct {
 	Symbol   string
 	Side     string
@@ -17,8 +17,8 @@ type NewOrderRequest struct {
 	Quantity float64
 }
 
-// Exchange 定义了所有交易所实现必须提供的通用方法。
-// 这使得交易机器人可以在真实交易和回测之间轻松切换。
+// Exchange defines all the common methods that every exchange implementation must provide.
+// This allows the trading bot to easily switch between live trading and backtesting.
 type Exchange interface {
 	GetPrice(symbol string) (float64, error)
 	GetPositions(symbol string) ([]models.Position, error)
@@ -33,11 +33,11 @@ type Exchange interface {
 	CancelAllOpenOrders(symbol string) error
 	GetOrderStatus(symbol string, orderID int64) (*models.Order, error)
 	GetCurrentTime() time.Time
-	// GetAccountState 获取账户状态，包括总持仓价值和账户总权益
+	// GetAccountState retrieves the account state, including total position value and total account equity
 	GetAccountState(symbol string) (positionValue float64, accountEquity float64, err error)
 	GetSymbolInfo(symbol string) (*models.SymbolInfo, error)
-	GetOpenOrders(symbol string) ([]models.Order, error) // 新增：获取所有挂单
-	GetServerTime() (int64, error)                       // 新增：获取服务器时间
+	GetOpenOrders(symbol string) ([]models.Order, error) // New: Get all pending orders
+	GetServerTime() (int64, error)                       // New: Get server time
 	GetLastTrade(symbol string, orderID int64) (*models.Trade, error)
 	GetMaxWalletExposure() float64
 	CreateListenKey() (string, error)
