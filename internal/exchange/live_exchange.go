@@ -88,7 +88,7 @@ func (e *LiveExchange) doRequest(method, endpoint string, params url.Values, sig
 		encodedParams = queryParams.Encode()
 	}
 
-	// 3. 根据请求方法创建请求
+	// 3. Create a request based on the request method
 	var req *http.Request
 	var err error
 
@@ -115,10 +115,10 @@ func (e *LiveExchange) doRequest(method, endpoint string, params url.Values, sig
 	}
 	defer resp.Body.Close()
 
-	// 5. 读取和处理响应
+	// 5. Read and handle responses
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("读取响应体失败: %v", err)
+		return nil, fmt.Errorf("Failed to read the response body: %v", err)
 	}
 
 	var binanceError models.Error
@@ -185,7 +185,7 @@ func (e *LiveExchange) GetPositions(symbol string) ([]models.Position, error) {
 		return nil, err
 	}
 
-	// 过滤掉没有持仓的条目
+	// Filter out entries with no positions
 	var activePositions []models.Position
 	for _, p := range positions {
 		posAmt, _ := strconv.ParseFloat(p.PositionAmt, 64)
@@ -216,7 +216,7 @@ func (e *LiveExchange) PlaceOrder(symbol, side, orderType string, quantity, pric
 	data, err := e.doRequest("POST", "/fapi/v1/order", params, true)
 	if err != nil {
 		// 当 doRequest 返回错误时，第一个返回值是响应体 body，第二个是 error
-		e.logger.Error("下单请求失败，交易所返回错误", zap.Error(err), zap.String("raw_response", string(data)))
+		e.logger.Error("Order request failed, the exchange returned an error", zap.Error(err), zap.String("raw_response", string(data)))
 		return nil, err
 	}
 
@@ -252,10 +252,10 @@ func (e *LiveExchange) SetPositionMode(isHedgeMode bool) error {
 	params.Set("dualSidePosition", fmt.Sprintf("%v", isHedgeMode))
 	_, err := e.doRequest("POST", "/fapi/v1/positionSide/dual", params, true)
 
-	// 如果错误是币安的特定错误，并且错误码是 -4059 (无需更改), 则忽略该错误
+	// If the error is a Binance-specific error and the error code is -4059 (no change needed), then ignore the error.
 	if err != nil {
 		if binanceErr, ok := err.(*models.Error); ok && binanceErr.Code == -4059 {
-			e.logger.Info("持仓模式无需更改，已是目标模式。")
+			e.logger.Info("No need to change the holding mode, it's already the target mode.")
 			return nil
 		}
 		return err
@@ -267,14 +267,14 @@ func (e *LiveExchange) SetPositionMode(isHedgeMode bool) error {
 func (e *LiveExchange) GetPositionMode() (bool, error) {
 	data, err := e.doRequest("GET", "/fapi/v1/positionSide/dual", nil, true)
 	if err != nil {
-		return false, fmt.Errorf("获取持仓模式失败: %v", err)
+		return false, fmt.Errorf("Failed to get the holding mode: %v", err)
 	}
 
 	var result struct {
 		DualSidePosition bool `json:"dualSidePosition"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
-		return false, fmt.Errorf("解析持仓模式响应失败: %v", err)
+		return false, fmt.Errorf("Failed to parse position mode: %v", err)
 	}
 
 	return result.DualSidePosition, nil
@@ -317,7 +317,7 @@ func (e *LiveExchange) GetMarginType(symbol string) (string, error) {
 		return "", fmt.Errorf("API未返回交易对 %s 的持仓风险信息", symbol)
 	}
 
-	// 保证金模式是针对交易对的，所以取第一个结果即可。
+	// Since margin type is defined per trading pair, it is sufficient to take the first result
 	// API返回的是小写 (e.g., "cross", "isolated")，配置中是大写，因此需要转换。
 	return strings.ToUpper(positions[0].MarginType), nil
 }
@@ -326,12 +326,12 @@ func (e *LiveExchange) GetMarginType(symbol string) (string, error) {
 func (e *LiveExchange) GetAccountInfo() (*models.AccountInfo, error) {
 	data, err := e.doRequest("GET", "/fapi/v2/account", nil, true)
 	if err != nil {
-		return nil, fmt.Errorf("获取账户信息失败: %v", err)
+		return nil, fmt.Errorf("Failed to get account info: %v", err)
 	}
 
 	var accInfo models.AccountInfo
 	if err := json.Unmarshal(data, &accInfo); err != nil {
-		return nil, fmt.Errorf("解析账户信息失败: %v", err)
+		return nil, fmt.Errorf("Failed to parse account information: %v", err)
 	}
 	return &accInfo, nil
 }
@@ -342,14 +342,14 @@ func (e *LiveExchange) CancelAllOpenOrders(symbol string) error {
 	params.Set("symbol", symbol)
 	body, err := e.doRequest("DELETE", "/fapi/v1/allOpenOrders", params, true)
 
-	// 由于 doRequest 已经处理了 code:200 的情况，这里的逻辑可以大大简化。
-	// 如果 err 不为 nil，那么它就是一个需要处理的真实错误。
+	// Since doRequest already handles the case of code:200, the logic here can be greatly simplified.
+	// If err is not nil, then it represents a real error that needs to be handled.
 	if err != nil {
-		e.logger.Error("取消所有挂单失败", zap.Error(err), zap.String("response", string(body)))
+		e.logger.Error("Failed to cancel all pending orders", zap.Error(err), zap.String("response", string(body)))
 		return err
 	}
 
-	e.logger.Info("成功取消所有挂单（或无挂单需要取消）。", zap.String("symbol", symbol))
+	e.logger.Info("Successfully canceled all open orders (or no orders needed to be canceled)", zap.String("symbol", symbol))
 	return nil
 }
 
@@ -375,21 +375,21 @@ func (e *LiveExchange) GetCurrentTime() time.Time {
 	return time.Now()
 }
 
-// GetAccountState 获取账户状态，包括总持仓价值和账户总权益
+// GetAccountState gets the account status, including total position value and total account equity
 func (e *LiveExchange) GetAccountState(symbol string) (positionValue float64, accountEquity float64, err error) {
 	accInfo, err := e.GetAccountInfo()
 	if err != nil {
-		return 0, 0, fmt.Errorf("获取账户状态失败: %v", err)
+		return 0, 0, fmt.Errorf("Failed to get account status: %v", err)
 	}
 
 	equity, err := strconv.ParseFloat(accInfo.TotalWalletBalance, 64)
 	if err != nil {
-		return 0, 0, fmt.Errorf("解析账户总权益失败: %v", err)
+		return 0, 0, fmt.Errorf(""Failed to parse total account equity: %v", err)
 	}
 
 	positions, err := e.GetPositions(symbol)
 	if err != nil {
-		return 0, 0, fmt.Errorf("获取持仓信息失败: %v", err)
+		return 0, 0, fmt.Errorf("Failed to get position information: %v", err)
 	}
 
 	var totalPositionValue float64
@@ -403,7 +403,7 @@ func (e *LiveExchange) GetAccountState(symbol string) (positionValue float64, ac
 
 // GetSymbolInfo 获取交易对的交易规则
 func (e *LiveExchange) GetSymbolInfo(symbol string) (*models.SymbolInfo, error) {
-	// 【关键修复】获取交易所信息时不应传递任何参数，以获取所有交易对的完整列表
+	// Key fix: When retrieving exchange information, no parameters should be passed in order to obtain the complete list of trading pairs
 	data, err := e.doRequest("GET", "/fapi/v1/exchangeInfo", nil, false)
 	if err != nil {
 		return nil, err
@@ -458,7 +458,7 @@ func (e *LiveExchange) GetServerTime() (int64, error) {
 func (e *LiveExchange) GetLastTrade(symbol string, orderID int64) (*models.Trade, error) {
 	params := url.Values{}
 	params.Set("symbol", symbol)
-	params.Set("limit", "1") // 我们只需要最新的那笔成交
+	params.Set("limit", "1") // We only need the latest trade
 	data, err := e.doRequest("GET", "/fapi/v1/userTrades", params, true)
 	if err != nil {
 		return nil, err
@@ -473,7 +473,7 @@ func (e *LiveExchange) GetLastTrade(symbol string, orderID int64) (*models.Trade
 		return &trades[0], nil
 	}
 
-	return nil, fmt.Errorf("未找到订单 %d 的成交记录", orderID)
+	return nil, fmt.Errorf("Order not found %d Transaction records", orderID)
 }
 
 // GetMaxWalletExposure 在真实交易中不适用，返回0
@@ -485,7 +485,7 @@ func (e *LiveExchange) GetMaxWalletExposure() float64 {
 func (e *LiveExchange) CreateListenKey() (string, error) {
 	data, err := e.doRequest("POST", "/fapi/v1/listenKey", nil, true)
 	if err != nil {
-		return "", fmt.Errorf("创建 listenKey 失败: %v", err)
+		return "", fmt.Errorf("Create listenKey failure: %v", err)
 	}
 
 	var response struct {
@@ -504,7 +504,7 @@ func (e *LiveExchange) KeepAliveListenKey(listenKey string) error {
 	params.Set("listenKey", listenKey)
 	_, err := e.doRequest("PUT", "/fapi/v1/listenKey", params, true)
 	if err != nil {
-		return fmt.Errorf("保持 listenKey 存活失败: %v", err)
+		return fmt.Errorf("保持 listenKey Failed to survive: %v", err)
 	}
 	return nil
 }
@@ -513,15 +513,15 @@ func (e *LiveExchange) KeepAliveListenKey(listenKey string) error {
 func (e *LiveExchange) GetBalance() (float64, error) {
 	data, err := e.doRequest("GET", "/fapi/v2/balance", nil, true)
 	if err != nil {
-		return 0, fmt.Errorf("获取账户余额失败: %v", err)
+		return 0, fmt.Errorf("Failed to get account balance: %v", err)
 	}
 
 	var balances []models.Balance
 	if err := json.Unmarshal(data, &balances); err != nil {
-		return 0, fmt.Errorf("解析余额数据失败: %v", err)
+		return 0, fmt.Errorf("Failed to parse balance data: %v", err)
 	}
 
-	// 通常我们关心 USDT 的余额作为保证金和计价货币
+	// We usually pay attention to the USDT balance as margin and the pricing currency
 	for _, b := range balances {
 		if b.Asset == "USDT" {
 			return strconv.ParseFloat(b.AvailableBalance, 64)
@@ -537,7 +537,7 @@ func (e *LiveExchange) ConnectWebSocket(listenKey string) (*websocket.Conn, erro
 	wsURL := fmt.Sprintf("%s/ws/%s", e.wsBaseURL, listenKey)
 	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("无法连接到 WebSocket: %v", err)
+		return nil, fmt.Errorf("Can't connect to WebSocket: %v", err)
 	}
 	e.wsConn = conn
 	return conn, nil
