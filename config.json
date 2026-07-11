@@ -6,7 +6,7 @@
   "testnet_ws_url": "wss://stream.binancefuture.com",
   "symbol": "BNBUSDT",
   "grid_spacing": 0.007,
-  "grid_quantity": 0.02,
+  "grid_quantity": 0.01,
   "min_notional_value": 5.0,
   "initial_investment": 1600.0,
   "leverage": 10,
