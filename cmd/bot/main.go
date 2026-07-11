@@ -5,7 +5,7 @@ import (
 	"binance-grid-bot-go/internal/config"
 	"binance-grid-bot-go/internal/downloader"
 	"binance-grid-bot-go/internal/exchange"
-	"binance-grid-bot-go/internal/logger" // 新增 logger 包
+	"binance-grid-bot-go/internal/logger" // Add a new logger package
 	"binance-grid-bot-go/internal/models"
 	"binance-grid-bot-go/internal/reporter"
 	"encoding/csv"
@@ -48,23 +48,23 @@ func main() {
 	endDate := flag.String("end", "", "end date for backtesting (YYYY-MM-DD)")
 	flag.Parse()
 
-	// --- 初始化日志 (提前) ---
-	// 为了在加载.env或配置时就能记录日志，我们需要先于其他逻辑初始化一个临时的或默认的logger
-	// 这里我们假设InitLogger可以被安全地提前调用
+	// --- Initialize log (early) ---
+	// To enable logging during .env or configuration loading, a temporary or default logger must be initialized before other logic
+	// Here we assume that InitLogger can be safely called ahead of time
 	logger.InitLogger(models.LogConfig{Level: "info", Output: "console"}) // 使用一个默认配置
 
 	// --- 加载 .env 文件 ---
 	err := godotenv.Load()
 	if err != nil {
-		logger.S().Info("未找到 .env 文件，将从系统环境变量中读取。")
+		logger.S().Info("Not found .env File，It will be read from the system environment variables.")
 	} else {
-		logger.S().Info("成功从 .env 文件加载配置。")
+		logger.S().Info("successfully from .env File loading configuration.")
 	}
 
 	// --- 加载 JSON 配置 ---
 	cfg, err := config.LoadConfig(*configPath)
 	if err != nil {
-		logger.S().Fatalf("无法加载配置文件: %v", err)
+		logger.S().Fatalf("Can't load the config file: %v", err)
 	}
 
 	// --- 使用文件中的配置重新初始化日志 ---
@@ -81,12 +81,12 @@ func main() {
 		}
 		runBacktestMode(cfg, finalDataPath)
 	default:
-		logger.S().Fatalf("未知的运行模式: %s。请选择 'live' 或 'backtest'。", *mode)
+		logger.S().Fatalf("Unknown operating mode: %s。Please choose 'live' or 'backtest'。", *mode)
 	}
 }
 
 // handleBacktestMode 处理回测模式的启动逻辑，包括数据下载。
-// 成功后返回数据文件路径，失败则返回错误。
+// Returns the data file path if successful, or an error if it fails.
 func handleBacktestMode(symbol, startDate, endDate, dataPath string) (string, error) {
 	// 检查是否需要下载数据
 	shouldDownload := symbol != "" && startDate != "" && endDate != ""
@@ -95,42 +95,42 @@ func handleBacktestMode(symbol, startDate, endDate, dataPath string) (string, er
 		startTime, err1 := time.Parse("2006-01-02", startDate)
 		endTime, err2 := time.Parse("2006-01-02", endDate)
 		if err1 != nil || err2 != nil {
-			return "", fmt.Errorf("日期格式错误，请使用 YYYY-MM-DD 格式。start: %v, end: %v", err1, err2)
+			return "", fmt.Errorf("Wrong date format，请使用 YYYY-MM-DD 格式。start: %v, end: %v", err1, err2)
 		}
 
-		// 确保数据目录存在
+		// Make sure the data directory exists
 		if _, err := os.Stat("data"); os.IsNotExist(err) {
 			if err := os.Mkdir("data", 0755); err != nil {
-				return "", fmt.Errorf("创建 data 目录失败: %v", err)
+				return "", fmt.Errorf("Create data Directory failed: %v", err)
 			}
 		}
 
 		downloader := downloader.NewKlineDownloader()
 		fileName := fmt.Sprintf("data/%s-%s-%s.csv", symbol, startDate, endDate)
-		logger.S().Infof("开始下载 %s 从 %s 到 %s 的K线数据...", symbol, startDate, endDate)
+		logger.S().Infof("Start downloading %s from %s arrive %s K-line data...", symbol, startDate, endDate)
 
 		if err := downloader.DownloadKlines(symbol, fileName, startTime, endTime); err != nil {
-			return "", fmt.Errorf("下载数据失败: %v", err)
+			return "", fmt.Errorf("Failed to download data: %v", err)
 		}
 		return fileName, nil // 返回下载好的文件路径
 	}
 
-	// 如果不下载，则必须提供数据路径
+	// If no download is performed, a data path must be provided
 	if dataPath == "" {
-		return "", fmt.Errorf("回测模式需要通过 --data 或 --symbol/start/end 参数指定数据源")
+		return "", fmt.Errorf("Backtest mode needs to be enabled --data 或 --symbol/start/end 参数指定数据源")
 	}
 	return dataPath, nil
 }
 
 // runLiveMode 运行实时交易机器人
 func runLiveMode(cfg *models.Config) {
-	logger.S().Info("--- 启动实时交易模式 ---")
+	logger.S().Info("--- Start real-time trading mode ---")
 
-	// 从环境变量加载API密钥
+	// Load the API key from the environment variables
 	apiKey := os.Getenv("BINANCE_API_KEY")
 	secretKey := os.Getenv("BINANCE_SECRET_KEY")
 	if apiKey == "" || secretKey == "" {
-		logger.S().Fatal("错误：BINANCE_API_KEY 和 BINANCE_SECRET_KEY 环境变量必须被设置。")
+		logger.S().Fatal("Error：BINANCE_API_KEY and BINANCE_SECRET_KEY Environment variables must be set.")
 	}
 
 	// 根据配置设置API URL
@@ -138,11 +138,11 @@ func runLiveMode(cfg *models.Config) {
 	if cfg.IsTestnet {
 		baseURL = cfg.TestnetAPIURL
 		wsBaseURL = cfg.TestnetWSURL
-		logger.S().Info("正在使用币安测试网...")
+		logger.S().Info("Currently using Binance Testnet...")
 	} else {
 		baseURL = cfg.LiveAPIURL
 		wsBaseURL = cfg.LiveWSURL
-		logger.S().Info("正在使用币安生产网...")
+		logger.S().Info("Currently using Binance mainnet...")
 	}
 	cfg.BaseURL = baseURL
 	cfg.WSBaseURL = wsBaseURL
@@ -150,53 +150,53 @@ func runLiveMode(cfg *models.Config) {
 	// 初始化交易所
 	liveExchange, err := exchange.NewLiveExchange(apiKey, secretKey, cfg.BaseURL, cfg.WSBaseURL, logger.L())
 	if err != nil {
-		logger.S().Fatalf("初始化交易所失败: %v", err)
+		logger.S().Fatalf("Failed to initialize the exchange: %v", err)
 	}
 
-	// --- 初始化交易所设置 ---
-	logger.S().Info("正在初始化交易所设置...")
+	// --- Initialize exchange settings ---
+	logger.S().Info("Initializing exchange settings...")
 
 	// 1. 设置持仓模式 (单向/双向)
 	if _, err := liveExchange.GetAccountInfo(); err != nil {
-		logger.S().Fatalf(" 调用 GetAccountInfo 失败: %v", err)
+		logger.S().Fatalf(" call GetAccountInfo failure: %v", err)
 		return
 	}
 
-	// 1. 设置持仓模式 (单向/双向)
+	// 1. Set position mode (One-way/Two-way)
 	currentHedgeMode, err := liveExchange.GetPositionMode()
 	if err != nil {
-		logger.S().Fatalf("获取当前持仓模式失败: %v", err)
+		logger.S().Fatalf("Failed to get the current position mode: %v", err)
 		return
 	}
 
 	if currentHedgeMode != cfg.HedgeMode {
-		logger.S().Infof("当前持仓模式 (HedgeMode=%v) 与配置 (HedgeMode=%v) 不符，正在尝试更新...", currentHedgeMode, cfg.HedgeMode)
+		logger.S().Infof("Current Position Mode (HedgeMode=%v) 与配置 (HedgeMode=%v) 不符，Trying to update...", currentHedgeMode, cfg.HedgeMode)
 		if err := liveExchange.SetPositionMode(cfg.HedgeMode); err != nil {
-			logger.S().Fatalf("设置持仓模式失败: %v", err)
+			logger.S().Fatalf("Failed to set position mode: %v", err)
 			return
 		}
-		logger.S().Infof("持仓模式成功更新为: HedgeMode=%v", cfg.HedgeMode)
+		logger.S().Infof("Position mode successfully updated to: HedgeMode=%v", cfg.HedgeMode)
 	} else {
-		logger.S().Infof("当前持仓模式已是目标模式 (HedgeMode=%v)，无需更改。", cfg.HedgeMode)
+		logger.S().Infof("The current position mode is already set to the target mode (HedgeMode=%v)，无需更改。", cfg.HedgeMode)
 	}
 
 	// 2. 设置保证金模式 (全仓/逐仓)
 	currentMarginType, err := liveExchange.GetMarginType(cfg.Symbol)
 	if err != nil {
-		logger.S().Fatalf("获取当前保证金模式失败: %v", err)
+		logger.S().Fatalf("Failed to get the current margin mode: %v", err)
 		return
 	}
 
 	// 比较时忽略大小写
 	if !strings.EqualFold(currentMarginType, cfg.MarginType) {
-		logger.S().Infof("当前保证金模式 (%s) 与配置 (%s) 不符，正在尝试更新...", currentMarginType, cfg.MarginType)
+		logger.S().Infof("Current margin model (%s) With configuration (%s) 不符，Trying to update...", currentMarginType, cfg.MarginType)
 		if err := liveExchange.SetMarginType(cfg.Symbol, cfg.MarginType); err != nil {
-			logger.S().Fatalf("设置保证金模式失败: %v", err)
+			logger.S().Fatalf("Failed to set margin mode: %v", err)
 			return
 		}
-		logger.S().Infof("保证金模式成功更新为: %s", cfg.MarginType)
+		logger.S().Infof("The margin mode has been successfully updated to: %s", cfg.MarginType)
 	} else {
-		logger.S().Infof("当前保证金模式已是目标模式 (%s)，无需更改。", cfg.MarginType)
+		logger.S().Infof("The current margin model is already the target model (%s)，No need to change.", cfg.MarginType)
 	}
 
 	// 初始化机器人
@@ -204,29 +204,29 @@ func runLiveMode(cfg *models.Config) {
 
 	// 启动机器人
 	if err := gridBot.Start(); err != nil {
-		logger.S().Fatalf("机器人启动失败: %v", err)
+		logger.S().Fatalf("The bot failed to start: %v", err)
 		return
 	}
 
-	// 等待中断信号以实现优雅退出
+	// Wait for interrupt signal to perform graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	// 停止机器人, 状态保存逻辑已移至 bot.Stop() 内部
 	gridBot.Stop()
-	logger.S().Info("机器人已成功停止。")
+	logger.S().Info(""The bot has been successfully stopped.")
 }
 
 // runBacktestMode 运行回测模式
 func runBacktestMode(cfg *models.Config, dataPath string) {
-	logger.S().Info("--- 启动回测模式 ---")
-	cfg.WSBaseURL = "ws://localhost" // 在回测中，我们不需要真实的ws连接
+	logger.S().Info("--- Start backtesting mode ---")
+	cfg.WSBaseURL = "ws://localhost" // In backtesting, we don't need a real WS connection.
 
 	// 从数据路径中提取 symbol，并用它来覆盖 config 中的值
 	backtestSymbol := extractSymbolFromPath(dataPath)
 	if backtestSymbol == "" {
-		logger.S().Fatalf("无法从数据文件路径 %s 中提取交易对", dataPath)
+		logger.S().Fatalf("Can't access from the data file path %s 中提取交易对", dataPath)
 	}
 	cfg.Symbol = backtestSymbol // 确保机器人逻辑也使用正确的 symbol
 
@@ -234,26 +234,26 @@ func runBacktestMode(cfg *models.Config, dataPath string) {
 	backtestExchange := exchange.NewBacktestExchange(cfg)
 	gridBot := bot.NewGridTradingBot(cfg, backtestExchange, true)
 
-	// 加载并处理历史数据
+	// Load and process historical data
 	file, err := os.Open(dataPath)
 	if err != nil {
-		logger.S().Fatalf("无法打开历史数据文件: %v", err)
+		logger.S().Fatalf("Can't open the historical data file: %v", err)
 	}
 	defer file.Close()
 
 	// --- 重构数据读取以捕获时间 ---
 	records, err := csv.NewReader(file).ReadAll()
 	if err != nil {
-		logger.S().Fatalf("无法读取所有CSV记录: %v", err)
+		logger.S().Fatalf("Can't read all CSV records: %v", err)
 	}
 	if len(records) <= 1 { // 至少需要表头和一行数据
-		logger.S().Fatal("历史数据文件为空或只有表头。")
+		logger.S().Fatal("The historical data file is empty or only has a header.")
 	}
 
 	// 移除表头
 	records = records[1:]
 
-	// 解析开始和结束时间
+	// Analysis start and end time
 	startTimeMs, _ := strconv.ParseInt(records[0][0], 10, 64)
 	endTimeMs, _ := strconv.ParseInt(records[len(records)-1][0], 10, 64)
 	startTime := time.UnixMilli(startTimeMs)
@@ -273,26 +273,26 @@ func runBacktestMode(cfg *models.Config, dataPath string) {
 			zap.Error(errH),
 			zap.Error(errL),
 			zap.Error(errC),
-		).Fatal("无法解析初始价格")
+		).Fatal("Can't parse the initial price")
 	}
 
 	backtestExchange.SetPrice(initialOpen, initialHigh, initialLow, initialClose, initialTime)
 	gridBot.SetCurrentPrice(initialClose)
 	if err := gridBot.StartForBacktest(); err != nil {
-		logger.S().Fatalf("回测机器人初始化失败: %v", err)
+		logger.S().Fatalf("Backtesting bot failed to initialize: %v", err)
 	}
-	logger.S().Infof("使用初始价格 %.2f 完成机器人初始化。\n", initialClose)
+	logger.S().Infof("使用初始价格 %.2f Robot initialization complete. \n", initialClose)
 
 	// --- 循环处理所有数据点 ---
 	logger.S().Info("开始回测...")
 	for _, record := range records {
 		// 检查是否爆仓或进入暂停状态
 		if backtestExchange.IsLiquidated() {
-			logger.S().Warn("检测到爆仓，提前终止回测循环。")
+			logger.S().Warn("Detected liquidation，Stop the backtesting loop early.")
 			break
 		}
 		if gridBot.IsHalted() {
-			logger.S().Info("机器人已暂停，提前终止回测循环。")
+			logger.S().Info("The bot is paused，提前终止回测循环。")
 			break
 		}
 
@@ -302,7 +302,7 @@ func runBacktestMode(cfg *models.Config, dataPath string) {
 		low, errL := strconv.ParseFloat(record[3], 64)
 		closePrice, errC := strconv.ParseFloat(record[4], 64)
 		if errT != nil || errO != nil || errH != nil || errL != nil || errC != nil {
-			logger.S().Warnf("无法解析K线数据，跳过此条记录: %v", record)
+			logger.S().Warnf("Can't parse K-line data，Skip this record: %v", record)
 			continue
 		}
 		timestamp := time.UnixMilli(timestampMs)
@@ -310,7 +310,7 @@ func runBacktestMode(cfg *models.Config, dataPath string) {
 		gridBot.ProcessBacktestTick()
 	}
 
-	logger.S().Info("回测结束。")
+	logger.S().Info("Backtest finished.")
 
 	// --- 生成并打印回测报告 ---
 	reporter.GenerateReport(backtestExchange, dataPath, startTime, endTime)
