@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-// LoadConfig 从指定路径加载JSON配置文件并解析到Config结构体中
+// LoadConfig from config.json
 func LoadConfig(path string) (*models.Config, error) {
 	file, err := os.Open(path)
 	if err != nil {
