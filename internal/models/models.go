@@ -5,33 +5,36 @@ import (
 	"time"
 )
 
-// The Config struct defines all configuration parameters for the trading bot.
+// Config 结构体定义了机器人的所有配置参数
 type Config struct {
-	IsTestnet                bool      `json:"is_testnet"` // Use testnet?
+	IsTestnet                bool      `json:"is_testnet"` // 是否使用测试网
 	LiveAPIURL               string    `json:"live_api_url"`
 	LiveWSURL                string    `json:"live_ws_url"`
 	TestnetAPIURL            string    `json:"testnet_api_url"`
 	TestnetWSURL             string    `json:"testnet_ws_url"`
-	Symbol                   string    `json:"symbol"`                                // Trading pair, e.g. "BTCUSDT"
-	GridSpacing              float64   `json:"grid_spacing"`                          // Grid spacing ratio.
-	GridValue                float64   `json:"grid_value,omitempty"`                  // Trade value per grid (USDT)
-	GridQuantity             float64   `json:"grid_quantity,omitempty"`               // Trade quantity per grid (base currency).
-	MinNotionalValue         float64   `json:"min_notional_value"`                    // Exchange minimum notional order value (e.g. 5 USDT)
-	InitialInvestment        float64   `json:"initial_investment"`                    // Initial investment (USDT), used for market buy
-	Leverage                 int       `json:"leverage"`                              // Leverage multiplier
-	MarginType               string    `json:"margin_type"`                           // Margin mode: CROSSED or ISOLATED
-	PositionMode             string    `json:"position_mode"`                         // Position mode: "Oneway" or "Hedge"
-	StopLossRate             float64   `json:"stop_loss_rate,omitempty"`              // New: Stop-loss rate
-	HedgeMode                bool      `json:"hedge_mode"`                            // Enable hedge mode (dual positions)?
-	GridCount                int       `json:"grid_count"`                            // Number of grids
-	ActiveOrdersCount        int       `json:"active_orders_count"`                   // The number of orders hung on each side of the price
-	ReturnRate               float64   `json:"return_rate"`                           // Expected mean reversion rate
-	WalletExposureLimit      float64   `json:"wallet_exposure_limit"`                 // Wallet exposure limit
-	LogConfig                LogConfig `json:"log"`                                   // Logging configuration
-	RetryAttempts            int       `json:"retry_attempts"`                        // Number of retry attempts if order placement fails
-	RetryInitialDelayMs      int       `json:"retry_initial_delay_ms"`                // Initial delay before retry (milliseconds)
-	WebSocketPingIntervalSec int       `json:"websocket_ping_interval_sec,omitempty"` // Interval for sending WebSocket ping messages (seconds)
-	WebSocketPongTimeoutSec  int       `json:"websocket_pong_timeout_sec,omitempty"`  // Timeout for WebSocket pong response (seconds)
+	Symbol                   string    `json:"symbol"`                                // 交易对，如 "BTCUSDT"
+	GridSpacing              float64   `json:"grid_spacing"`                          // 网格间距比例 (legacy, tidak dipakai lagi jika GridSpacingStart > 0)
+	GridSpacingStart         float64   `json:"grid_spacing_start"`                     // Jarak level pertama dari pivot (mis. 0.05 = 5%)
+	GridSpacingIncrement     float64   `json:"grid_spacing_increment"`                 // Penambahan jarak per level (mis. 0.01 = 1%)
+	GridSpacingCap           float64   `json:"grid_spacing_cap"`                       // Jarak maksimum antar level (mis. 0.07 = 7%)
+	GridValue                float64   `json:"grid_value,omitempty"`                  // 每个网格的交易价值 (USDT)
+	GridQuantity             float64   `json:"grid_quantity,omitempty"`               // 新增：每个网格的交易数量（基础货币）
+	MinNotionalValue         float64   `json:"min_notional_value"`                    // 新增: 交易所最小订单名义价值 (例如 5 USDT)
+	InitialInvestment        float64   `json:"initial_investment"`                    // 初始投资额 (USDT), 用于市价买入
+	Leverage                 int       `json:"leverage"`                              // 杠杆倍数
+	MarginType               string    `json:"margin_type"`                           // 保证金模式: CROSSED 或 ISOLATED
+	PositionMode             string    `json:"position_mode"`                         // 新增: 持仓模式, "Oneway" 或 "Hedge"
+	StopLossRate             float64   `json:"stop_loss_rate,omitempty"`              // 新增: 止损率
+	HedgeMode                bool      `json:"hedge_mode"`                            // 是否开启对冲模式 (双向持仓)
+	GridCount                int       `json:"grid_count"`                            // 网格数量（对）
+	ActiveOrdersCount        int       `json:"active_orders_count"`                   // 在价格两侧各挂的订单数量
+	ReturnRate               float64   `json:"return_rate"`                           // 预期回归价格比例
+	WalletExposureLimit      float64   `json:"wallet_exposure_limit"`                 // 新增：钱包风险暴露上限
+	LogConfig                LogConfig `json:"log"`                                   // 新增：日志配置
+	RetryAttempts            int       `json:"retry_attempts"`                        // 新增: 下单失败时的重试次数
+	RetryInitialDelayMs      int       `json:"retry_initial_delay_ms"`                // 新增: 重试前的初始延迟毫秒数
+	WebSocketPingIntervalSec int       `json:"websocket_ping_interval_sec,omitempty"` // 新增: WebSocket Ping消息发送间隔(秒)
+	WebSocketPongTimeoutSec  int       `json:"websocket_pong_timeout_sec,omitempty"`  // 新增: WebSocket Pong消息超时时间(秒)
 
 	// 回测引擎特定配置
 	TakerFeeRate          float64 `json:"taker_fee_rate"`          // 吃单手续费率
@@ -39,8 +42,8 @@ type Config struct {
 	SlippageRate          float64 `json:"slippage_rate"`           // 滑点率
 	MaintenanceMarginRate float64 `json:"maintenance_margin_rate"` // 维持保证金率
 
-	BaseURL   string `json:"base_url"`    // REST API base address, dynamically set by the program
-	WSBaseURL string `json:"ws_base_url"` // WebSocket base address, dynamically set by the program
+	BaseURL   string `json:"base_url"`    // REST API基础地址 (将由程序动态设置)
+	WSBaseURL string `json:"ws_base_url"` // WebSocket基础地址 (将由程序动态设置)
 }
 
 // LogConfig 定义了日志相关的配置
@@ -90,7 +93,7 @@ type Position struct {
 	UpdateTime       int64  `json:"updateTime"`
 }
 
-// Order defines the order information
+// Order 定义了订单信息
 type Order struct {
 	Symbol        string `json:"symbol"`
 	OrderId       int64  `json:"orderId"`
@@ -125,23 +128,23 @@ type GridLevel struct {
 	Side            string  `json:"side"`
 	IsActive        bool    `json:"is_active"`
 	OrderID         int64   `json:"order_id"`
-	GridID          int     `json:"grid_id"`                     // Record the theoretical grid ID associated with this order (index of conceptualGrid)
-	PairID          int     `json:"pair_id"`                     // Used for matching buy and sell orders
-	PairedSellPrice float64 `json:"paired_sell_price,omitempty"` // Used only in buy orders, records the corresponding sell price
+	GridID          int     `json:"grid_id"`                     // Rank order pada sisinya (1=terdekat dari pivot), bukan index array
+	PairID          int     `json:"pair_id"`                     // 用于配对买单和卖单
+	PairedSellPrice float64 `json:"paired_sell_price,omitempty"` // 仅在买单中使用，记录其对应的卖出价
 }
 
-// CompletedTrade records a finished trade (buy and sell)
+// CompletedTrade 记录一笔完成的交易（买入和卖出）
 type CompletedTrade struct {
 	Symbol       string
 	Quantity     float64
 	EntryTime    time.Time
 	ExitTime     time.Time
-	HoldDuration time.Duration // Holding duration
+	HoldDuration time.Duration // 新增：持仓时长
 	EntryPrice   float64
-	ExitPrice    float64 // Entry price
+	ExitPrice    float64 // 新增：记录卖出价格
 	Profit       float64
-	Fee          float64 // Transaction fee per trade
-	Slippage     float64 // Slippage cost per trade
+	Fee          float64 // 新增：单笔交易手续费
+	Slippage     float64 // 新增：单笔交易滑点成本
 }
 
 // BuyTrade records the details of a single buy-in for FIFO accounting.
@@ -172,7 +175,7 @@ type Filter struct {
 	MinNotional string `json:"minNotional,omitempty"` // For MIN_NOTIONAL
 }
 
-// A trade defines the information for a single transaction
+// Trade 定义了单次成交的信息
 type Trade struct {
 	Symbol          string `json:"symbol"`
 	ID              int64  `json:"id"`
@@ -191,7 +194,7 @@ type Trade struct {
 	Maker           bool   `json:"maker"`
 }
 
-// TradeEvent defines a trade event from the WebSocket
+// TradeEvent 定义了来自 WebSocket 的交易事件
 type TradeEvent struct {
 	EventType string `json:"e"` // Event type
 	EventTime int64  `json:"E"` // Event time
@@ -205,11 +208,11 @@ type TradeEvent struct {
 	IsMaker   bool   `json:"m"` // Is the buyer the market maker?
 }
 
-// UserDataEvent is a general event structure received from the user data stream
+// UserDataEvent 是从用户数据流接收到的通用事件结构
 type UserDataEvent struct {
 	EventType string `json:"e"` // Event type, e.g., "executionReport"
 	EventTime int64  `json:"E"` // Event time
-	// Depending on the type of event, different payloads can be included here.
+	// 根据事件类型，这里可以包含不同的负载
 	ExecutionReport ExecutionReport `json:"o"`
 }
 
@@ -236,18 +239,6 @@ type ExecutionReport struct {
 	TradeID       int64  `json:"t"`  // Trade ID
 }
 
-// BotState defines the trading bot state that needs to be saved and loaded.
-type BotState struct {
-	GridLevels              []GridLevel `json:"grid_levels"`
-	BasePositionEstablished bool        `json:"base_position_established"`
-	ConceptualGrid          []float64   `json:"conceptual_grid"`
-	EntryPrice              float64     `json:"entry_price"`
-	ReversionPrice          float64     `json:"reversion_price"`
-	IsReentering            bool        `json:"is_reentering"`
-	CurrentPrice            float64     `json:"current_price"`
-	CurrentTime             time.Time   `json:"current_time"`
-}
-
 // Balance 定义了账户中特定资产的余额信息
 type Balance struct {
 	Asset              string `json:"asset"`
@@ -256,7 +247,7 @@ type Balance struct {
 	AvailableBalance   string `json:"availableBalance"`
 }
 
-// Error defines the structure of the error information returned by the Binance API
+// Error 定义了币安API返回的错误信息结构
 type Error struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
@@ -265,14 +256,6 @@ type Error struct {
 // Error 方法使得 BinanceError 实现了 error 接口
 func (e *Error) Error() string {
 	return fmt.Sprintf("API Error: code=%d, msg=%s", e.Code, e.Msg)
-}
-
-// GridState 定义了需要持久化保存的机器人状态
-type GridState struct {
-	GridLevels     []GridLevel `json:"grid_levels"`
-	EntryPrice     float64     `json:"entry_price"`
-	ReversionPrice float64     `json:"reversion_price"`
-	ConceptualGrid []float64   `json:"conceptual_grid"`
 }
 
 // OrderUpdateEvent 是从用户数据流接收到的订单更新事件的完整结构
@@ -317,38 +300,38 @@ type OrderUpdateInfo struct {
 	RealizedProfit  string `json:"rp"` // Realized Profit of the trade
 }
 
-// AccountUpdateEvent represents the complete structure of the ACCOUNT_UPDATE WebSocket event.
+// AccountUpdateEvent 代表了 ACCOUNT_UPDATE WebSocket 事件的完整结构。
 type AccountUpdateEvent struct {
-	EventType       string            `json:"e"` // Event Type
-	EventTime       int64             `json:"E"` // Event Type
-	TransactionTime int64             `json:"T"` // Matching engine transaction time.
-	UpdateData      AccountUpdateData `json:"a"` // Detailed account update data.
+	EventType       string            `json:"e"` // 事件类型
+	EventTime       int64             `json:"E"` // 事件时间
+	TransactionTime int64             `json:"T"` // 撮合引擎交易时间
+	UpdateData      AccountUpdateData `json:"a"` // 账户更新的具体数据
 }
 
 // AccountUpdateData 包含账户更新中的余额和仓位信息。
 type AccountUpdateData struct {
-	Reason    string           `json:"m"` // The reason the event happened, for example, 'ORDER'
-	Balances  []BalanceUpdate  `json:"B"` // Balance Update List
-	Positions []PositionUpdate `json:"P"` // Position Update List
+	Reason    string           `json:"m"` // 事件发生的原因，例如 "ORDER"
+	Balances  []BalanceUpdate  `json:"B"` // 余额更新列表
+	Positions []PositionUpdate `json:"P"` // 仓位更新列表
 }
 
-// BalanceUpdate represents a balance update for a single asset.
+// BalanceUpdate 代表单个资产的余额更新。
 type BalanceUpdate struct {
-	Asset              string `json:"a"`  // Asset name
-	WalletBalance      string `json:"wb"` // Wallet balance
-	CrossWalletBalance string `json:"cw"` // Cross margin wallet balance
-	BalanceChange      string `json:"bc"` // Balance change (excluding PnL and fees)
+	Asset              string `json:"a"`  // 资产名称
+	WalletBalance      string `json:"wb"` // 钱包余额
+	CrossWalletBalance string `json:"cw"` // 全仓账户钱包余额
+	BalanceChange      string `json:"bc"` // 余额变化（不含盈亏和手续费）
 }
 
-// PositionUpdate represents an update for a single position.
+// PositionUpdate 代表单个仓位的更新。
 type PositionUpdate struct {
-	Symbol              string `json:"s"`   // Trading pair
-	PositionAmount      string `json:"pa"`  // Position amount
-	EntryPrice          string `json:"ep"`  // Average entry price
-	AccumulatedRealized string `json:"cr"`  //  Accumulated realized profit and loss
-	UnrealizedPnl       string `json:"up"`  // Unrealized profit and loss
-	MarginType          string `json:"mt"`  // Margin type (cross or isolated)
-	IsolatedWallet      string `json:"iw"`  // Isolated margin wallet balance
-	PositionSide        string `json:"ps"`  // Position side (BOTH, LONG, SHORT)
-	BreakEvenPrice      string `json:"bep"` // Break-even price
+	Symbol              string `json:"s"`   // 交易对
+	PositionAmount      string `json:"pa"`  // 仓位数量
+	EntryPrice          string `json:"ep"`  // 开仓均价
+	AccumulatedRealized string `json:"cr"`  // 累计已实现盈亏
+	UnrealizedPnl       string `json:"up"`  // 未实现盈亏
+	MarginType          string `json:"mt"`  // 保证金模式 (cross/isolated)
+	IsolatedWallet      string `json:"iw"`  // 逐仓钱包余额
+	PositionSide        string `json:"ps"`  // 持仓方向 (BOTH, LONG, SHORT)
+	BreakEvenPrice      string `json:"bep"` // 盈亏平衡价
 }
